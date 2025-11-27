@@ -6,7 +6,7 @@ export const waitlistRoutes = Router();
 // Join waitlist
 waitlistRoutes.post('/', async (req: Request, res: Response) => {
   try {
-    const { email } = req.body;
+    const { email, walletAddress } = req.body;
 
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
@@ -34,6 +34,7 @@ waitlistRoutes.post('/', async (req: Request, res: Response) => {
     const entry = await db.waitlist.create({
       data: {
         email: email.toLowerCase(),
+        walletAddress: walletAddress || null,
       },
     });
 
@@ -45,6 +46,26 @@ waitlistRoutes.post('/', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error joining waitlist:', error);
     res.status(500).json({ error: 'Failed to join waitlist' });
+  }
+});
+
+// Check if wallet address is on waitlist
+waitlistRoutes.get('/check/wallet/:address', async (req: Request, res: Response) => {
+  try {
+    const { address } = req.params;
+
+    const entry = await db.waitlist.findFirst({
+      where: { walletAddress: address },
+    });
+
+    res.json({
+      success: true,
+      isOnWaitlist: !!entry,
+      email: entry?.email || null,
+    });
+  } catch (error: any) {
+    console.error('Error checking waitlist:', error);
+    res.status(500).json({ error: 'Failed to check waitlist' });
   }
 });
 

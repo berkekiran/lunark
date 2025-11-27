@@ -209,14 +209,16 @@ model tasks {
 }
 
 model Waitlist {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  notified  Boolean   @default(false)
-  metadata  Json?
+  id            String    @id @default(cuid())
+  email         String    @unique
+  walletAddress String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  notified      Boolean   @default(false)
+  metadata      Json?
 
   @@index([email])
+  @@index([walletAddress])
   @@index([createdAt])
 }
 
