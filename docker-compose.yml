@@ -1,49 +1,19 @@
-version: '3.8'
-
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: lunark-postgres
-    restart: unless-stopped
+  lunark:
+    image: lunark:latest
+    container_name: lunark
+    restart: always
     env_file:
-      - .env
-    environment:
-      POSTGRES_INITDB_ARGS: "-E UTF8"
+      - .env.production
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - "3005:4545"
     networks:
       - lunark-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lunark"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  lunark-backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: lunark-backend
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    ports:
-      - "3011:4545"
-    volumes:
-      - ./logs:/app/logs
-    networks:
-      - lunark-network
-
-volumes:
-  postgres_data:
-    driver: local
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   lunark-network:
