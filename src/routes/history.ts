@@ -71,14 +71,21 @@ historyRoutes.get('/', authenticateToken, async (req: AuthRequest, res: Response
         // Extract chatId from graph name (format: "Chat-{chatId}")
         const chatId = graph.name.replace('Chat-', '');
 
-        // Get first task from this graph for title
+        // Get first task from this graph for title (sorted by createdAt to get the actual first message)
         const graphInstance = await lunarkAgent.getOrCreateGraph(chatId);
-        const tasks = (await graphInstance.getTasks({ limit: 1 })) as any[];
+        const tasks = ((await graphInstance.getTasks({ limit: 10 })) as any[])
+          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
-        const title =
-          tasks.length > 0
-            ? tasks[0].prompt.substring(0, 50) + (tasks[0].prompt.length > 50 ? '...' : '')
-            : 'New Conversation';
+        // Use originalMessage from metadata if available (to avoid showing conversation history prefix)
+        // Fall back to prompt if metadata is not available
+        let title = 'New Conversation';
+        if (tasks.length > 0) {
+          const firstTask = tasks[0];
+          const messageContent = firstTask.metadata?.originalMessage || firstTask.prompt;
+          // Also strip any "--- CONVERSATION HISTORY ---" prefix if it somehow leaked through
+          const cleanMessage = messageContent.replace(/^---\s*CONVERSATION HISTORY\s*---[\s\S]*?Current message from user:\s*/i, '').trim();
+          title = cleanMessage.substring(0, 50) + (cleanMessage.length > 50 ? '...' : '');
+        }
 
         return {
           id: chatId,

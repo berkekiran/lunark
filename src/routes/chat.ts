@@ -179,11 +179,17 @@ chatRoutes.get('/:chatId', authenticateToken, async (req: AuthRequest, res: Resp
 
     console.log(`Found ${tasks.length} tasks for chat ${chatId} via graph.getTasks()`);
 
-    // Fetch all transactions for this chat
-    const transactions = await db.transaction.findMany({
-      where: { chatId },
-      orderBy: { createdAt: 'asc' },
-    });
+    // Fetch all transactions for this chat (graceful degradation if table doesn't exist)
+    let transactions: any[] = [];
+    try {
+      transactions = await db.transaction.findMany({
+        where: { chatId },
+        orderBy: { createdAt: 'asc' },
+      });
+    } catch (txError: any) {
+      // Table might not exist yet - continue without transactions
+      console.warn(`Could not fetch transactions for chat ${chatId}:`, txError.message);
+    }
 
     // Format tasks as messages (both user and assistant)
     const messages = tasks.flatMap(task => {
