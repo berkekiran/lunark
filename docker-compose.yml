@@ -1,0 +1,20 @@
+services:
+  lunark:
+    image: lunark:latest
+    container_name: lunark
+    restart: always
+    env_file:
+      - .env.production
+    ports:
+      - "3005:4545"
+    networks:
+      - lunark-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  lunark-network:
+    driver: bridge

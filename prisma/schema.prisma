@@ -1,0 +1,294 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String         @id @default(uuid())
+  address               String         @unique
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  balance               Float          @default(0)
+  nonce                 String         @default(uuid())
+  role                  String         @default("user")
+  sessionToken          String?        @unique
+  sessionTokenExpiresAt DateTime?
+  termsSignature        String?
+  termsSignedAt         DateTime?
+  deletedAt             DateTime?
+  contacts              Contact[]
+  payments              Payment[]
+  usages                Usage[]
+  settings              UserSettings?
+
+  @@unique([address, deletedAt])
+}
+
+model UserSettings {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  llmModel    String    @default("openai/gpt-4o-mini")
+  temperature Float     @default(0.3)
+  maxTokens   Int       @default(3600)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model Usage {
+  id               String    @id @default(cuid())
+  userId           String
+  agentId          String?
+  model            String    @default("gpt-4o-mini")
+  promptTokens     Int       @default(0)
+  completionTokens Int       @default(0)
+  totalTokens      Int       @default(0)
+  cost             Float     @default(0)
+  type             String    @default("response")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+  user             User      @relation(fields: [userId], references: [id])
+  agent            agents?   @relation(fields: [agentId], references: [id])
+
+  @@index([userId])
+  @@index([agentId])
+}
+
+model Payment {
+  id              String    @id @default(cuid())
+  userId          String
+  amount          Float
+  currency        String    @default("USD")
+  status          String    @default("PENDING")
+  method          String
+  metadata        String?
+  transactionHash String?   @unique
+  externalId      String?   @unique
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Contact {
+  id        String    @id @default(uuid())
+  userId    String
+  name      String
+  address   String
+  notes     String?
+  networks  String[]  @default([])
+  metadata  String?   @default("{}")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, name, deletedAt])
+  @@index([userId])
+}
+
+model Transaction {
+  id          String    @id @default(uuid())
+  chatId      String
+  userId      String
+  type        String    // "transfer" | "approve"
+  status      String    @default("pending") // "pending" | "submitted" | "confirmed" | "failed"
+  hash        String?   // Transaction hash after submission
+  chainId     Int
+  to          String    // Contract or recipient address
+  value       String    // Hex value
+  data        String    // Encoded transaction data
+  buttonText  String
+  details     Json?     // Additional details (amount, symbol, recipient name, etc.)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([chatId])
+  @@index([userId])
+  @@index([status])
+}
+
+model agents {
+  id                     String     @id @default(dbgenerated("gen_random_uuid()"))
+  name                   String     @unique(map: "agents_name_unique") @db.VarChar(255)
+  description            String?
+  model                  String?    @db.VarChar(255)
+  embeddingModel         String?    @db.VarChar(255)
+  visionModel            String?    @db.VarChar(255)
+  temperature            Float?     @db.Real
+  maxTokens              Int?
+  systemPrompt           String?
+  memory                 Boolean?   @default(false)
+  knowledge              Boolean?   @default(false)
+  vision                 Boolean?   @default(false)
+  useTools               Boolean?   @default(true)
+  autoContextCompression Boolean?   @default(false)
+  maxContextLength       Int?
+  preserveLastN          Int?
+  compressionRatio       Float?     @db.Real
+  compressionStrategy    String?    @db.VarChar(255)
+  debug                  Boolean?   @default(false)
+  created_at             DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime   @default(now()) @db.Timestamptz(6)
+  usages                 Usage[]
+  contexts               contexts[]
+  memories               memories[]
+  tasks                  tasks[]
+}
+
+model contexts {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()"))
+  agentId            String
+  graphId            String?
+  sessionId          String?   @db.VarChar(255)
+  contextData        Json?     @db.Json
+  summary            String?
+  tokensUsed         Int?      @default(0)
+  compressionVersion String?   @db.VarChar(255)
+  lastCompressed     DateTime? @db.Timestamptz(6)
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime  @default(now()) @db.Timestamptz(6)
+  agents             agents    @relation(fields: [agentId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "contexts_agentid_foreign")
+
+  @@index([agentId], map: "contexts_agentid_index")
+  @@index([graphId], map: "contexts_graphid_index")
+  @@index([sessionId], map: "contexts_sessionid_index")
+}
+
+model memories {
+  id         String   @id @default(dbgenerated("gen_random_uuid()"))
+  agentId    String
+  graphId    String?
+  taskId     String?
+  sessionId  String?  @db.VarChar(255)
+  content    String
+  embedding  String?
+  metadata   Json?    @db.Json
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  agents     agents   @relation(fields: [agentId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "memories_agentid_foreign")
+
+  @@index([agentId], map: "memories_agentid_index")
+  @@index([graphId], map: "memories_graphid_index")
+  @@index([taskId], map: "memories_taskid_index")
+  @@index([sessionId], map: "memories_sessionid_index")
+  @@index([created_at], map: "memories_created_at_index")
+  @@index([agentId, sessionId], map: "memories_agentid_sessionid_index")
+}
+
+model tasks {
+  id               String    @id @default(dbgenerated("gen_random_uuid()"))
+  agentId          String
+  graphId          String?
+  graphNodeId      String?
+  prompt           String
+  response         String?
+  status           String?   @default("pending")
+  metadata         Json?     @db.Json
+  executionContext Json?     @db.Json
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @default(now()) @db.Timestamptz(6)
+  completedAt      DateTime? @db.Timestamptz(6)
+  agents           agents    @relation(fields: [agentId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "tasks_agentid_foreign")
+
+  @@index([agentId], map: "tasks_agentid_index")
+  @@index([graphId], map: "tasks_graphid_index")
+  @@index([graphNodeId], map: "tasks_graphnodeid_index")
+  @@index([created_at], map: "tasks_created_at_index")
+  @@index([status], map: "tasks_status_index")
+  @@index([agentId, status], map: "tasks_agentid_status_index")
+}
+
+model Waitlist {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  walletAddress String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  notified      Boolean   @default(false)
+  metadata      Json?
+
+  @@index([email])
+  @@index([walletAddress])
+  @@index([createdAt])
+}
+
+model graphs {
+  id             String        @id @default(dbgenerated("gen_random_uuid()"))
+  name           String        @db.VarChar(255)
+  description    String?
+  status         String        @default("pending") @db.VarChar(50)
+  defaultAgentId String?
+  metadata       Json?         @db.Json
+  maxConcurrency Int?          @default(1)
+  retryAttempts  Int?          @default(0)
+  autoLink       Boolean?      @default(false)
+  timeout        Int?
+  startedAt      DateTime?     @db.Timestamptz(6)
+  completedAt    DateTime?     @db.Timestamptz(6)
+  created_at     DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime      @default(now()) @db.Timestamptz(6)
+  nodes          graph_nodes[]
+  edges          graph_edges[]
+
+  @@index([status], map: "graphs_status_index")
+  @@index([defaultAgentId], map: "graphs_default_agent_id_index")
+}
+
+model graph_nodes {
+  id           String   @id @default(dbgenerated("gen_random_uuid()"))
+  graphId      String
+  nodeId       String   @db.VarChar(255)
+  type         String   @db.VarChar(100)
+  name         String?  @db.VarChar(255)
+  description  String?
+  agentId      String?
+  prompt       String?  // TEXT type - encrypted string
+  model        String?  @db.VarChar(255)
+  stream       Boolean?
+  taskId       String?
+  status       String   @default("pending") @db.VarChar(50)
+  priority     Int?     @default(0)
+  dependencies Json?    @db.Json
+  result       String?  // TEXT type - encrypted string (was Json before)
+  error        String?
+  metadata     Json?    @db.Json // JSONB type - actual JSON data
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+  graph        graphs   @relation(fields: [graphId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "graph_nodes_graphid_foreign")
+
+  @@unique([graphId, nodeId], map: "graph_nodes_graphid_nodeid_unique")
+  @@index([graphId], map: "graph_nodes_graphid_index")
+  @@index([nodeId], map: "graph_nodes_nodeid_index")
+  @@index([taskId], map: "graph_nodes_taskid_index")
+  @@index([type], map: "graph_nodes_type_index")
+  @@index([status], map: "graph_nodes_status_index")
+  @@index([graphId, status], map: "graph_nodes_graphid_status_index")
+  @@index([graphId, priority], map: "graph_nodes_graphid_priority_index")
+}
+
+model graph_edges {
+  id         String   @id @default(dbgenerated("gen_random_uuid()"))
+  graphId    String
+  edgeId     String   @db.VarChar(255)
+  fromNode   String   @db.VarChar(255)
+  toNode     String   @db.VarChar(255)
+  condition  String?
+  metadata   Json?    @db.Json
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  graph      graphs   @relation(fields: [graphId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "graph_edges_graphid_foreign")
+
+  @@unique([graphId, edgeId], map: "graph_edges_graphid_edgeid_unique")
+  @@index([graphId], map: "graph_edges_graphid_index")
+  @@index([edgeId], map: "graph_edges_edgeid_index")
+}

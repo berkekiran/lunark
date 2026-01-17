@@ -1,0 +1,65 @@
+{
+  "name": "lunark",
+  "version": "1.0.0",
+  "description": "Making blockchain human-friendly with Lunark Agent.",
+  "main": "dist/app.js",
+  "scripts": {
+    "dev": "tsx watch src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json}\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "docker:dev": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:build": "docker build -t lunark-ai .",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "keywords": [
+    "ai",
+    "blockchain",
+    "agent",
+    "astreus",
+    "web3"
+  ],
+  "author": "Berke Kiran",
+  "license": "MIT",
+  "dependencies": {
+    "@astreus-ai/astreus": "0.5.29",
+    "@prisma/client": "6.19.0",
+    "cors": "2.8.5",
+    "dotenv": "17.2.3",
+    "ethers": "6.15.0",
+    "express": "5.1.0",
+    "express-rate-limit": "8.2.1",
+    "helmet": "8.1.0",
+    "hpp": "0.2.3",
+    "jsonwebtoken": "9.0.2",
+    "socket.io": "4.8.1",
+    "winston": "3.18.3",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "@types/cors": "2.8.19",
+    "@types/express": "5.0.5",
+    "@types/hpp": "0.2.7",
+    "@types/jsonwebtoken": "9.0.10",
+    "@types/node": "24.10.1",
+    "eslint": "9.39.1",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-prettier": "5.5.4",
+    "prettier": "3.6.2",
+    "prisma": "6.19.0",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.46.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
